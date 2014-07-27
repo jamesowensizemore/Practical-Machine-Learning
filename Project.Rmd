@@ -1,0 +1,98 @@
+Report for Practical Machine Learning Course Project
+========================================================
+
+Here we will describe the analysis we perform for the course project.
+
+
+### Cleaning Data
+
+First we uploaded the data. Note that, because of the time to run the code, we choose to not have the .Rmd file run the code when it compiles, however we do include all of the code for the sake of reproducibility. 
+
+```{r, eval = FALSE}
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+```
+
+Following this we extracted only the relevant data that concern the motions involved in the dataset. Superfluous information such as subject ID number we removed from the data. We applied these operations to the training dataset.
+
+```{r, eval = FALSE}
+neededinfo <- training[,7:160]
+```
+
+Next we cleaned the data by removing NA's and ensuring all data was numeric.
+
+```{r, eval = FALSE}
+x <- neededinfo
+xch <- as.character(x)
+xnum <- as.numeric(xch)
+xnona <- xnum[!is.na(xnum)]
+y <- 0
+for(i in 1:154){
+  x <- neededinfo[,i]
+  xch <- as.character(x)
+  xnum <- as.numeric(xch)
+  xnona <- xnum[!is.na(xnum)]
+  y[i] <- length(xnona)
+ 
+}
+```
+
+Next we extracted only those variables which have few NA's
+
+```{r, eval = FALSE}
+NInfo <- neededinfo[, c(1, 2, 3, 4, 5, 31, 32, 33, 34, 35, 36, 37, 38, 39, 
+                        40, 41, 42, 43, 54, 55, 56, 57, 58, 59, 60, 61, 62,
+                        78, 79, 80, 96, 107, 108, 109, 110, 111, 112, 113, 
+                        114, 115, 116, 117, 118, 145, 146, 147, 148, 149, 
+                        150, 151, 152, 153, 154)]
+NInfo <- NInfo[,2:53]
+```
+
+At this point we have the basic data that we wanted to work with
+
+
+### Partitioning the Data Set
+
+Now we partition the training data set into the actual data that we will use for our model, and a validation testing set that we will use for cross validation. We decided to use 3/8 of the original training data set as our actual training set to create the model. This gave us approximately 7,000 observations with which to make our model. We felt that this was sufficient, especially since when we tried creating the model with a larger set, the computation time was overly long. 
+
+```{r, eval = FALSE}
+library(caret)
+inTrain = createDataPartition(NInfo$classe, p = 3/8)[[1]]
+trainset = NInfo[ inTrain,]
+testset = NInfo[-inTrain,]
+```
+
+### Model Creation
+
+Here we create the predictive model. We had a number of choices here and decided to go with a random forest model. Other models such as multiple linear regression did not give us anywhere close to the same accuracy when we applied our model to the validation set.
+
+```{r, eval = FALSE}
+modFit <- train(classe ~ ., data = trainset, method = "rf", prox = TRUE)
+```
+
+### Cross Validation and Out of Sample Error
+
+Next we applied our model to the validation set, which we created earlier, in order to get the out of sample error. 
+
+```{r, eval=FALSE}
+pred <- predict(modFit, newdata = testset)
+```
+
+Next we compare our prediction to the actual values of the Classe variable for the validation we. We get a accuracy of approximately 98.5%. 
+```{r, eval=FALSE}
+TestClasse <- testset[,52]
+pred <- as.character(pred)
+TestClasse <- as.character(TestClasse)
+Try1 <- rbind(TestClasse, pred)
+
+i <- 0
+j<- 0
+k <- length(pred)
+for(i in 1:k){
+  if(pred[i] == TestClasse[i]) {
+    j <- j+1
+  } 
+}
+```
+
+By this analysis we estimate that the out of sample error to be approximately 1.5%. 
